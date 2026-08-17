@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel · Editor de Video Local</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-2: #263449;
+    --texto: #f8fafc;
+    --muted: #94a3b8;
+    --azul: #38bdf8;
+    --azul-fuerte: #0284c7;
+    --verde: #22c55e;
+    --amarillo: #eab308;
+    --rojo: #ef4444;
+    --borde: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--texto);
+    padding: 20px;
+  }
+  .contenedor { max-width: 980px; margin: 0 auto; }
+  h1 { color: var(--azul); font-size: 1.6rem; margin-bottom: 4px; }
+  .subtitulo { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.9rem; }
+
+  .grid-infra {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .pill-infra {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    border: 1px solid var(--borde);
+  }
+  .punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .punto.on { background: var(--verde); box-shadow: 0 0 6px var(--verde); }
+  .punto.off { background: var(--rojo); }
+
+  section { margin-bottom: 32px; }
+  h2 {
+    font-size: 1.1rem;
+    color: var(--texto);
+    border-bottom: 1px solid var(--borde);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .refresco { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
+
+  /* --- Formulario de generacion --- */
+  .card-form {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    border: 1px solid var(--borde);
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1;
+    background: var(--card-2);
+    border: 1px solid var(--borde);
+    color: var(--muted);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .tab-btn.activo { background: var(--azul-fuerte); color: white; border-color: var(--azul-fuerte); }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin: 12px 0 6px; }
+  input[type="text"], textarea, select, input[type="file"] {
+    width: 100%;
+    background: var(--card-2);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 140px; }
+  .fila-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .fila-2 { grid-template-columns: 1fr; } }
+  button.principal {
+    margin-top: 18px;
+    width: 100%;
+    background: var(--azul-fuerte);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.principal:disabled { opacity: 0.6; cursor: not-allowed; }
+  button.principal:hover:not(:disabled) { background: #0369a1; }
+  .mensaje-form { margin-top: 12px; font-size: 0.88rem; padding: 10px 12px; border-radius: 8px; display: none; }
+  .mensaje-form.ok { display: block; background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .mensaje-form.error { display: block; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+  /* --- Trabajos activos --- */
+  .trabajo {
+    background: var(--card);
+    border: 1px solid var(--borde);
+    border-left: 3px solid var(--amarillo);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .trabajo.estado-listo { border-left-color: var(--verde); }
+  .trabajo.estado-error { border-left-color: var(--rojo); }
+  .badge {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge.generando { background: rgba(234,179,8,0.15); color: var(--amarillo); }
+  .badge.listo { background: rgba(34,197,94,0.15); color: var(--verde); }
+  .badge.error { background: rgba(239,68,68,0.15); color: var(--rojo); }
+
+  /* --- Listado de capitulos --- */
+  .capitulo {
+    background: var(--card);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .capitulo-info { flex: 1; min-width: 200px; }
+  .capitulo-titulo { font-weight: 600; margin-bottom: 4px; }
+  .capitulo-meta { font-size: 0.78rem; color: var(--muted); }
+  a.boton-descarga {
+    background: var(--azul-fuerte);
+    color: white;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  a.boton-descarga:hover { background: #0369a1; }
+  .vacio { color: var(--muted); font-size: 0.9rem; padding: 20px; text-align: center; }
+
+  .barra-busqueda {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="contenedor">
+
+  <h1>🎬 Panel · Editor de Video Local</h1>
+  <p class="subtitulo">Fábrica de minicapítulos educativos — monitor en vivo</p>
+
+  <div class="grid-infra" id="grid-infra"></div>
+
+  <section>
+    <h2>Generar nuevo capítulo</h2>
+    <div class="card-form">
+      <div class="tabs">
+        <button type="button" class="tab-btn activo" id="tab-texto" onclick="cambiarTab('texto')">✍️ Texto</button>
+        <button type="button" class="tab-btn" id="tab-pdf" onclick="cambiarTab('pdf')">📄 PDF</button>
+      </div>
+
+      <label for="titulo">Título del capítulo</label>
+      <input type="text" id="titulo" placeholder="Ej: Los colores primarios">
+
+      <div id="panel-texto">
+        <label for="texto">Texto / guion</label>
+        <textarea id="texto" placeholder="Pega aquí el texto a convertir en video..."></textarea>
+      </div>
+
+      <div id="panel-pdf" style="display:none;">
+        <label for="archivo-pdf">Archivo PDF</label>
+        <input type="file" id="archivo-pdf" accept="application/pdf">
+      </div>
+
+      <div class="fila-2">
+        <div>
+          <label for="formato">Formato</label>
+          <select id="formato">
+            <option value="vertical">Vertical (1080x1920)</option>
+            <option value="horizontal">Horizontal (1920x1080)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="principal" id="btn-generar" onclick="generarVideo()">🚀 Generar video</button>
+      <div class="mensaje-form" id="mensaje-form"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Trabajos en curso <span class="refresco" id="refresco-trabajos">actualiza cada 4s</span></h2>
+    <div id="lista-trabajos"><p class="vacio">Sin trabajos activos por ahora.</p></div>
+  </section>
+
+  <section>
+    <h2>Capítulos generados <span class="refresco" id="refresco-capitulos"></span></h2>
+    <input type="text" class="barra-busqueda" id="buscar" placeholder="Buscar por título..." oninput="filtrarCapitulos()">
+    <div id="lista-capitulos"><p class="vacio">Cargando...</p></div>
+  </section>
+
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const TOKEN = params.get("token") || "";
+const qToken = TOKEN ? ("?token=" + encodeURIComponent(TOKEN)) : "";
+
+let capitulosCache = [];
+
+function cambiarTab(cual) {
+  document.getElementById("tab-texto").classList.toggle("activo", cual === "texto");
+  document.getElementById("tab-pdf").classList.toggle("activo", cual === "pdf");
+  document.getElementById("panel-texto").style.display = cual === "texto" ? "block" : "none";
+  document.getElementById("panel-pdf").style.display = cual === "pdf" ? "block" : "none";
+}
+
+function mostrarMensaje(texto, tipo) {
+  const el = document.getElementById("mensaje-form");
+  el.textContent = texto;
+  el.className = "mensaje-form " + tipo;
+}
+
+async function generarVideo() {
+  const titulo = document.getElementById("titulo").value.trim();
+  const formato = document.getElementById("formato").value;
+  const esPdf = document.getElementById("tab-pdf").classList.contains("activo");
+  const btn = document.getElementById("btn-generar");
+
+  if (!titulo) { mostrarMensaje("Ingresa un título.", "error"); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  try {
+    let resp;
+    if (esPdf) {
+      const archivo = document.getElementById("archivo-pdf").files[0];
+      if (!archivo) { mostrarMensaje("Selecciona un PDF.", "error"); btn.disabled = false; btn.textContent = "🚀 Generar video"; return; }
+      const form = new FormData();
+      form.append("titulo", titulo);
+      form.append("formato", formato);
+      form.append("archivo", archivo);
+      resp = await fetch("/api/generar-video-pdf" + qToken, { method: "POST", body: form });
+    } else {
+      const texto = document.getElementById("texto").value.trim();
+      if (!texto) { mostrarMensaje("Ingresa el texto o guion.", "error"); btn.disabled = false; btn.textContent = "🚀 Generar video"; return; }
+      resp = await fetch("/api/generar-video" + qToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, texto, formato }),
+      });
+    }
+
+    const datos = await resp.json();
+    if (!resp.ok) throw new Error(datos.detail || "Error desconocido");
+
+    mostrarMensaje("✅ En cola. Va a aparecer abajo en 'Trabajos en curso'.", "ok");
+    document.getElementById("titulo").value = "";
+    document.getElementById("texto").value = "";
+    cargarEstadoSistema();
+  } catch (e) {
+    mostrarMensaje("❌ " + e.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🚀 Generar video";
+  }
+}
+
+function renderInfra(infra) {
+  const nombres = { postgres: "Postgres", mongo: "MongoDB", redis: "Redis" };
+  const grid = document.getElementById("grid-infra");
+  grid.innerHTML = Object.entries(infra || {}).map(([clave, v]) => `
+    <div class="pill-infra">
+      <span class="punto ${v.conectada ? "on" : "off"}"></span>
+      ${nombres[clave] || clave}
+    </div>
+  `).join("");
+}
+
+function renderTrabajos(trabajos) {
+  const cont = document.getElementById("lista-trabajos");
+  if (!trabajos || trabajos.length === 0) {
+    cont.innerHTML = '<p class="vacio">Sin trabajos activos por ahora.</p>';
+    return;
+  }
+  cont.innerHTML = trabajos.map(t => {
+    const estado = (t.status || "generando").toLowerCase();
+    const etiqueta = estado === "listo" ? "Listo" : estado === "error" ? "Error" : "Generando...";
+    return `
+      <div class="trabajo estado-${estado}">
+        <div>
+          <strong>${t.run_id}</strong>
+          ${t.error ? `<div class="capitulo-meta">${t.error}</div>` : ""}
+        </div>
+        <span class="badge ${estado}">${etiqueta}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderCapitulos(lista) {
+  const cont = document.getElementById("lista-capitulos");
+  if (!lista || lista.length === 0) {
+    cont.innerHTML = '<p class="vacio">No hay capítulos generados todavía.</p>';
+    return;
+  }
+  cont.innerHTML = lista.map(c => {
+    const estado = (c.estado || "").toLowerCase();
+    const puedeDescargar = c.archivo && estado === "listo";
+    const duracion = c.duracion_total_seg ? `${Math.round(c.duracion_total_seg)}s` : "";
+    const escenas = c.num_escenas ? `${c.num_escenas} escenas` : "";
+    const fecha = c.creado_en ? new Date(c.creado_en).toLocaleString("es") : "";
+    return `
+      <div class="capitulo">
+        <div class="capitulo-info">
+          <div class="capitulo-titulo">${c.titulo || c.run_id}</div>
+          <div class="capitulo-meta">${[fecha, escenas, duracion].filter(Boolean).join(" · ")}
+            <span class="badge ${estado}">${estado}</span>
+          </div>
+        </div>
+        ${puedeDescargar
+          ? `<a class="boton-descarga" href="/api/descargar/${encodeURIComponent(c.archivo)}${qToken}" target="_blank">⬇️ Descargar</a>`
+          : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+function filtrarCapitulos() {
+  const q = document.getElementById("buscar").value.trim().toLowerCase();
+  const filtrado = q
+    ? capitulosCache.filter(c => (c.titulo || "").toLowerCase().includes(q))
+    : capitulosCache;
+  renderCapitulos(filtrado);
+}
+
+async function cargarEstadoSistema() {
+  try {
+    const resp = await fetch("/api/estado_sistema" + qToken);
+    if (resp.status === 401) {
+      document.getElementById("lista-capitulos").innerHTML =
+        '<p class="vacio">Falta ?token=&lt;tu token&gt; en la URL, o es incorrecto.</p>';
+      return;
+    }
+    const datos = await resp.json();
+    renderInfra(datos.infraestructura);
+    renderTrabajos(datos.trabajos_activos);
+    capitulosCache = datos.capitulos || [];
+    filtrarCapitulos();
+    document.getElementById("refresco-capitulos").textContent =
+      "actualizado " + new Date().toLocaleTimeString("es");
+  } catch (e) {
+    console.error("No se pudo actualizar el estado:", e);
+  }
+}
+
+cargarEstadoSistema();
+setInterval(cargarEstadoSistema, 4000);
+</script>
+</body>
+</html>
